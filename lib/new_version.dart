@@ -1,5 +1,7 @@
 library new_version;
 
+import 'dart:math';
+
 import 'package:http/http.dart' as http;
 import 'package:package_info/package_info.dart';
 import 'package:html/parser.dart' show parse;
@@ -12,11 +14,8 @@ import 'dart:async';
 /// Information about the app's current version, and the most recent version
 /// available in the Apple App Store or Google Play Store.
 class VersionStatus {
-  /// True if the there is a more recent version of the app in the store.
-  bool canUpdate;
-
   /// The current version of the app.
-  String localVersion;
+  final String localVersion;
 
   /// The most recent version of the app in the store.
   String storeVersion;
@@ -24,25 +23,59 @@ class VersionStatus {
   /// A link to the app store page where the app can be updated.
   String appStoreLink;
 
-  VersionStatus({this.canUpdate, this.localVersion, this.storeVersion});
+  VersionStatus({
+    @required this.localVersion
+  });
+
+  bool get canUpdate {
+    List<int> local = (localVersion ?? '0.0.0').split('.').map((version) => int.parse(version));
+    List<int> store = (storeVersion ?? '0.0.0').split('.').map((version) => int.parse(version));
+
+    int length = min(local.length, store.length);
+
+    for (int i = 0; i < length; i++) {
+      if (store[i] > local[i]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 }
 
 class NewVersion {
   /// This is required to check the user's platform and display alert dialogs.
-  BuildContext context;
+  final BuildContext context;
 
   /// An optional value that can override the default packageName when
   /// attempting to reach the Google Play Store. This is useful if your app has
   /// a different package name in the Play Store for some reason.
-  String androidId;
+  final String androidId;
 
   /// An optional value that can override the default packageName when
   /// attempting to reach the Apple App Store. This is useful if your app has
   /// a different package name in the App Store for some reason.
-  String iOSId;
+  final String iOSId;
 
-  NewVersion({this.androidId, this.iOSId, @required this.context})
-      : assert(context != null);
+  final String title;
+  final String content;
+  final String dismiss;
+  final String update;
+
+  void Function() onDismiss;
+  void Function() onUpdate;
+
+  NewVersion({
+    @required this.context,
+    this.androidId,
+    this.iOSId,
+    this.title,
+    this.content,
+    this.dismiss,
+    this.update,
+    this.onDismiss,
+    this.onUpdate,
+  }) : assert(context != null);
 
   /// This checks the version status, then displays a platform-specific alert
   /// with buttons to dismiss the update alert, or go to the app store.
@@ -61,29 +94,24 @@ class NewVersion {
     VersionStatus versionStatus = VersionStatus(
       localVersion: packageInfo.version,
     );
+
     switch (Theme.of(context).platform) {
       case TargetPlatform.android:
         final id = androidId ?? packageInfo.packageName;
-        versionStatus = await _getAndroidStoreVersion(id, versionStatus);
+        return _getAndroidStoreVersion(id, versionStatus);
         break;
       case TargetPlatform.iOS:
         final id = iOSId ?? packageInfo.packageName;
-        versionStatus = await _getiOSStoreVersion(id, versionStatus);
+        return _getIOSStoreVersion(id, versionStatus);
         break;
       default:
         print('This target platform is not yet supported by this package.');
+        return versionStatus;
     }
-    if (versionStatus == null) {
-      return null;
-    }
-    versionStatus.canUpdate =
-        versionStatus.storeVersion != versionStatus.localVersion;
-    return versionStatus;
   }
 
-  /// iOS info is fetched by using the iTunes lookup API, which returns a
-  /// JSON document.
-  _getiOSStoreVersion(String id, VersionStatus versionStatus) async {
+  /// iOS info is fetched by using the iTunes lookup API, which returns a JSON document.
+  _getIOSStoreVersion(String id, VersionStatus versionStatus) async {
     final url = 'http://itunes.apple.com/lookup?bundleId=$id&country=kr';
     final response = await http.get(url);
     if (response.statusCode != 200) {
@@ -117,53 +145,53 @@ class NewVersion {
     return versionStatus;
   }
 
-  /// Shows the user a platform-specific alert about the app update. The user
-  /// can dismiss the alert or proceed to the app store.
+  /// Shows the user a platform-specific alert about the app update. The user can dismiss the alert or proceed to the app store.
   void showUpdateDialog(VersionStatus versionStatus) async {
-    const title = Text('Update Available');
-    final content = Text(
-        'You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
-    const dismissText = Text('Maybe Later');
-    final dismissAction = () => Navigator.pop(context);
-    const updateText = Text('Update');
-    final updateAction = () {
+    final title = Text(this.title ?? 'Update Available');
+    final content = Text(this.update ?? 'You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
+
+    final dismissText = Text(this.dismiss ?? 'Maybe Later');
+    final dismissAction = this.onDismiss ?? () {
+      Navigator.pop(context);
+    };
+
+    final updateText = Text(this.update ?? 'Update');
+    final updateAction = this.onUpdate ?? () {
       _launchAppStore(versionStatus.appStoreLink);
       Navigator.pop(context);
     };
+
     final platform = Theme.of(context).platform;
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return platform == TargetPlatform.android
-            ? AlertDialog(
-                title: title,
-                content: content,
-                actions: <Widget>[
-                  FlatButton(
-                    child: dismissText,
-                    onPressed: dismissAction,
-                  ),
-                  FlatButton(
-                    child: updateText,
-                    onPressed: updateAction,
-                  ),
-                ],
-              )
-            : CupertinoAlertDialog(
-                title: title,
-                content: content,
-                actions: <Widget>[
-                  CupertinoDialogAction(
-                    child: dismissText,
-                    onPressed: dismissAction,
-                  ),
-                  CupertinoDialogAction(
-                    child: updateText,
-                    onPressed: updateAction,
-                  ),
-                ],
-              );
-      },
+      builder: (BuildContext context) => platform == TargetPlatform.android ? AlertDialog(
+        title: title,
+        content: content,
+        actions: <Widget>[
+          FlatButton(
+            child: dismissText,
+            onPressed: dismissAction,
+          ),
+          FlatButton(
+            child: updateText,
+            onPressed: updateAction,
+          ),
+        ],
+      ) : CupertinoAlertDialog(
+        title: title,
+        content: content,
+        actions: <Widget>[
+          CupertinoDialogAction(
+            child: dismissText,
+            onPressed: dismissAction,
+          ),
+          CupertinoDialogAction(
+            child: updateText,
+            onPressed: updateAction,
+          ),
+        ],
+      )
     );
   }
 
