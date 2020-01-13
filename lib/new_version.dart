@@ -179,10 +179,10 @@ class NewVersion {
       style: TextStyle(fontWeight: FontWeight.w600)
     );
 
-    final dismissAction = onDismiss ?? () => Navigator.pop(context);
+    final dismissAction = onDismiss ?? () => Navigator.of(context, rootNavigator: true).pop();
     final updateAction = onUpdate ?? () {
       _launchAppStore(versionStatus.appStoreLink);
-      Navigator.pop(context);
+      Navigator.of(context, rootNavigator: true).pop();
     };
 
     final platform = Theme.of(context).platform;
