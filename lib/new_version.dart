@@ -18,13 +18,15 @@ class VersionStatus {
   final String localVersion;
 
   /// The most recent version of the app in the store.
-  String storeVersion;
+  final String storeVersion;
 
   /// A link to the app store page where the app can be updated.
-  String appStoreLink;
+  final String appStoreLink;
 
   VersionStatus({
-    @required this.localVersion
+    @required this.localVersion,
+    this.storeVersion,
+    this.appStoreLink,
   });
 
   bool get canUpdate {
@@ -116,7 +118,7 @@ class NewVersion {
   }
 
   /// iOS info is fetched by using the iTunes lookup API, which returns a JSON document.
-  _getIOSStoreVersion(String id, VersionStatus versionStatus) async {
+  Future<VersionStatus> _getIOSStoreVersion(String id, VersionStatus versionStatus) async {
     final url = 'http://itunes.apple.com/lookup?bundleId=$id&country=kr';
     final response = await http.get(url);
     if (response.statusCode != 200) {
@@ -124,13 +126,16 @@ class NewVersion {
       return null;
     }
     final jsonObj = json.decode(response.body);
-    versionStatus.storeVersion = jsonObj['results'][0]['version'];
-    versionStatus.appStoreLink = jsonObj['results'][0]['trackViewUrl'];
-    return versionStatus;
+
+    return VersionStatus(
+      localVersion: versionStatus.localVersion,
+      storeVersion: jsonObj['results'][0]['version'],
+      appStoreLink: jsonObj['results'][0]['trackViewUrl']
+    );
   }
 
   /// Android info is fetched by parsing the html of the app store page.
-  _getAndroidStoreVersion(String id, VersionStatus versionStatus) async {
+  Future<VersionStatus> _getAndroidStoreVersion(String id, VersionStatus versionStatus) async {
     final url = 'https://play.google.com/store/apps/details?id=$id';
     final response = await http.get(url);
     if (response.statusCode != 200) {
@@ -145,9 +150,12 @@ class NewVersion {
         return text == 'Current Version' || text == '현재 버전';
       },
     );
-    versionStatus.storeVersion = versionElement.querySelector('.htlgb').text;
-    versionStatus.appStoreLink = url;
-    return versionStatus;
+
+    return VersionStatus(
+      localVersion: versionStatus.localVersion,
+      storeVersion: versionElement.querySelector('.htlgb').text,
+      appStoreLink: url
+    );
   }
 
   /// Shows the user a platform-specific alert about the app update. The user can dismiss the alert or proceed to the app store.
