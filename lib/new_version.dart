@@ -68,6 +68,7 @@ class NewVersion {
   /// This checks the version status, then displays a platform-specific alert
   /// with buttons to dismiss the update alert, or go to the app store.
   Future<bool> showAlertIfNecessary({
+    bool dismissible = true,
     String title,
     String content,
     String dismiss,
@@ -79,6 +80,7 @@ class NewVersion {
     if (versionStatus != null && versionStatus.canUpdate) {
       showUpdateDialog(
         versionStatus,
+        dismissible: dismissible,
         title: title,
         content: content,
         dismiss: dismiss,
@@ -160,6 +162,7 @@ class NewVersion {
 
   /// Shows the user a platform-specific alert about the app update. The user can dismiss the alert or proceed to the app store.
   void showUpdateDialog(VersionStatus versionStatus, {
+    bool dismissible = true,
     String title,
     String content,
     String dismiss,
@@ -185,12 +188,12 @@ class NewVersion {
 
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: dismissible,
       builder: (BuildContext context) => platform == TargetPlatform.android ? AlertDialog(
         title: titleText,
         content: contentText,
         actions: <Widget>[
-          FlatButton(
+          if (dismissible) FlatButton(
             child: dismissText,
             onPressed: dismissAction,
           ),
@@ -203,7 +206,7 @@ class NewVersion {
         title: titleText,
         content: contentText,
         actions: <Widget>[
-          CupertinoDialogAction(
+          if (dismissible) CupertinoDialogAction(
             child: dismissText,
             onPressed: dismissAction,
           ),
