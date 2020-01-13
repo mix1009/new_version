@@ -30,8 +30,8 @@ class VersionStatus {
   });
 
   bool get canUpdate {
-    List<int> local = (localVersion ?? '0.0.0').split('.').map((version) => int.parse(version));
-    List<int> store = (storeVersion ?? '0.0.0').split('.').map((version) => int.parse(version));
+    List<int> local = (localVersion ?? '0.0.0').split('.').map((version) => int.parse(version)).toList();
+    List<int> store = (storeVersion ?? '0.0.0').split('.').map((version) => int.parse(version)).toList();
 
     int length = min(local.length, store.length);
 
