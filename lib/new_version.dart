@@ -174,11 +174,12 @@ class NewVersion {
     final contentText = Text(content ?? 'You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
 
     final dismissText = Text(dismiss ?? 'Maybe Later');
-    final dismissAction = onDismiss ?? () {
-      Navigator.pop(context);
-    };
+    final updateText = Text(
+      update ?? 'Update',
+      style: TextStyle(fontWeight: FontWeight.w600)
+    );
 
-    final updateText = Text(update ?? 'Update');
+    final dismissAction = onDismiss ?? () => Navigator.pop(context);
     final updateAction = onUpdate ?? () {
       _launchAppStore(versionStatus.appStoreLink);
       Navigator.pop(context);
