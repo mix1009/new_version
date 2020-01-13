@@ -84,7 +84,7 @@ class NewVersion {
   /// iOS info is fetched by using the iTunes lookup API, which returns a
   /// JSON document.
   _getiOSStoreVersion(String id, VersionStatus versionStatus) async {
-    final url = 'http://itunes.apple.com/lookup?bundleId=$id';
+    final url = 'http://itunes.apple.com/lookup?bundleId=$id&country=kr';
     final response = await http.get(url);
     if (response.statusCode != 200) {
       print('Can\'t find an app in the App Store with the id: $id');
@@ -107,7 +107,10 @@ class NewVersion {
     final document = parse(response.body);
     final elements = document.getElementsByClassName('hAyfc');
     final versionElement = elements.firstWhere(
-      (elm) => elm.querySelector('.BgcNfc').text == 'Current Version',
+      (elm) {
+        String text = elm.querySelector('.BgcNfc').text;
+        return text == 'Current Version' || text == '현재 버전';
+      },
     );
     versionStatus.storeVersion = versionElement.querySelector('.htlgb').text;
     versionStatus.appStoreLink = url;
