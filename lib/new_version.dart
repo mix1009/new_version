@@ -57,32 +57,27 @@ class NewVersion {
   /// a different package name in the App Store for some reason.
   final String iOSId;
 
-  final String title;
-  final String content;
-  final String dismiss;
-  final String update;
-
-  void Function() onDismiss;
-  void Function() onUpdate;
-
   NewVersion({
     @required this.context,
     this.androidId,
     this.iOSId,
-    this.title,
-    this.content,
-    this.dismiss,
-    this.update,
-    this.onDismiss,
-    this.onUpdate,
   }) : assert(context != null);
 
   /// This checks the version status, then displays a platform-specific alert
   /// with buttons to dismiss the update alert, or go to the app store.
-  showAlertIfNecessary() async {
+  showAlertIfNecessary({
+    String title,
+    String content,
+    String dismiss,
+    String update,
+    void Function() onDismiss,
+    void Function() onUpdate,
+  }) async {
     VersionStatus versionStatus = await getVersionStatus();
     if (versionStatus != null && versionStatus.canUpdate) {
-      showUpdateDialog(versionStatus);
+      showUpdateDialog(
+        versionStatus
+      );
     }
   }
 
@@ -146,17 +141,24 @@ class NewVersion {
   }
 
   /// Shows the user a platform-specific alert about the app update. The user can dismiss the alert or proceed to the app store.
-  void showUpdateDialog(VersionStatus versionStatus) async {
-    final title = Text(this.title ?? 'Update Available');
-    final content = Text(this.update ?? 'You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
+  void showUpdateDialog(VersionStatus versionStatus, {
+    String title,
+    String content,
+    String dismiss,
+    String update,
+    void Function() onDismiss,
+    void Function() onUpdate,
+  }) async {
+    final titleText = Text(title ?? 'Update Available');
+    final contentText = Text(content ?? 'You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
 
-    final dismissText = Text(this.dismiss ?? 'Maybe Later');
-    final dismissAction = this.onDismiss ?? () {
+    final dismissText = Text(dismiss ?? 'Maybe Later');
+    final dismissAction = onDismiss ?? () {
       Navigator.pop(context);
     };
 
-    final updateText = Text(this.update ?? 'Update');
-    final updateAction = this.onUpdate ?? () {
+    final updateText = Text(update ?? 'Update');
+    final updateAction = onUpdate ?? () {
       _launchAppStore(versionStatus.appStoreLink);
       Navigator.pop(context);
     };
@@ -166,8 +168,8 @@ class NewVersion {
     showDialog(
       context: context,
       builder: (BuildContext context) => platform == TargetPlatform.android ? AlertDialog(
-        title: title,
-        content: content,
+        title: titleText,
+        content: contentText,
         actions: <Widget>[
           FlatButton(
             child: dismissText,
@@ -179,8 +181,8 @@ class NewVersion {
           ),
         ],
       ) : CupertinoAlertDialog(
-        title: title,
-        content: content,
+        title: titleText,
+        content: contentText,
         actions: <Widget>[
           CupertinoDialogAction(
             child: dismissText,
