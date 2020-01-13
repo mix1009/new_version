@@ -77,7 +77,7 @@ class NewVersion {
     Widget dismiss,
     Widget submit,
     void Function() onDismiss,
-    void Function() onUpdate,
+    void Function() onSubmit,
   }) async {
     VersionStatus versionStatus = await getVersionStatus();
     if (versionStatus != null && versionStatus.canUpdate) {
@@ -89,7 +89,7 @@ class NewVersion {
         dismiss: dismiss,
         submit: submit,
         onDismiss: onDismiss,
-        onUpdate: onUpdate
+        onSubmit: onSubmit
       );
 
       return true;
@@ -173,7 +173,7 @@ class NewVersion {
     Widget dismiss,
     Widget submit,
     void Function() onDismiss,
-    void Function() onUpdate,
+    void Function() onSubmit,
   }) async {
     final titleText = title ?? Text('Update Available');
     final contentText = content ?? Text('You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
@@ -185,7 +185,7 @@ class NewVersion {
     );
 
     final dismissAction = onDismiss ?? () => Navigator.of(context, rootNavigator: true).pop();
-    final updateAction = onUpdate ?? () {
+    final submitAction = onSubmit ?? () {
       _launchAppStore(versionStatus.appStoreLink);
       Navigator.of(context, rootNavigator: true).pop();
     };
@@ -205,7 +205,7 @@ class NewVersion {
           ),
           FlatButton(
             child: submitText,
-            onPressed: updateAction,
+            onPressed: submitAction,
           ),
         ],
       ) : CupertinoAlertDialog(
@@ -218,7 +218,7 @@ class NewVersion {
           ),
           CupertinoDialogAction(
             child: submitText,
-            onPressed: updateAction,
+            onPressed: submitAction,
           ),
         ],
       )
