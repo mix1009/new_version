@@ -23,10 +23,13 @@ class VersionStatus {
   /// A link to the app store page where the app can be updated.
   final String appStoreLink;
 
+  final TargetPlatform platform;
+
   VersionStatus({
     @required this.localVersion,
     this.storeVersion,
     this.appStoreLink,
+    this.platform,
   });
 
   bool get canUpdate {
@@ -69,10 +72,10 @@ class NewVersion {
   /// with buttons to dismiss the update alert, or go to the app store.
   Future<bool> showAlertIfNecessary({
     bool dismissible = true,
-    String title,
-    String content,
-    String dismiss,
-    String update,
+    Widget title,
+    Widget content,
+    Widget dismiss,
+    Widget submit,
     void Function() onDismiss,
     void Function() onUpdate,
   }) async {
@@ -84,7 +87,7 @@ class NewVersion {
         title: title,
         content: content,
         dismiss: dismiss,
-        update: update,
+        submit: submit,
         onDismiss: onDismiss,
         onUpdate: onUpdate
       );
@@ -132,7 +135,8 @@ class NewVersion {
     return VersionStatus(
       localVersion: versionStatus.localVersion,
       storeVersion: jsonObj['results'][0]['version'],
-      appStoreLink: jsonObj['results'][0]['trackViewUrl']
+      appStoreLink: jsonObj['results'][0]['trackViewUrl'],
+      platform: TargetPlatform.iOS
     );
   }
 
@@ -156,26 +160,27 @@ class NewVersion {
     return VersionStatus(
       localVersion: versionStatus.localVersion,
       storeVersion: versionElement.querySelector('.htlgb').text,
-      appStoreLink: url
+      appStoreLink: url,
+      platform: TargetPlatform.android
     );
   }
 
   /// Shows the user a platform-specific alert about the app update. The user can dismiss the alert or proceed to the app store.
   void showUpdateDialog(VersionStatus versionStatus, {
     bool dismissible = true,
-    String title,
-    String content,
-    String dismiss,
-    String update,
+    Widget title,
+    Widget content,
+    Widget dismiss,
+    Widget submit,
     void Function() onDismiss,
     void Function() onUpdate,
   }) async {
-    final titleText = Text(title ?? 'Update Available');
-    final contentText = Text(content ?? 'You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
+    final titleText = title ?? Text('Update Available');
+    final contentText = content ?? Text('You can now update this app from ${versionStatus.localVersion} to ${versionStatus.storeVersion}');
 
-    final dismissText = Text(dismiss ?? 'Maybe Later');
-    final updateText = Text(
-      update ?? 'Update',
+    final dismissText = dismiss ?? Text('Maybe Later');
+    final submitText = submit ?? Text(
+      'Update',
       style: TextStyle(fontWeight: FontWeight.w600)
     );
 
@@ -199,7 +204,7 @@ class NewVersion {
             onPressed: dismissAction,
           ),
           FlatButton(
-            child: updateText,
+            child: submitText,
             onPressed: updateAction,
           ),
         ],
@@ -212,7 +217,7 @@ class NewVersion {
             onPressed: dismissAction,
           ),
           CupertinoDialogAction(
-            child: updateText,
+            child: submitText,
             onPressed: updateAction,
           ),
         ],
