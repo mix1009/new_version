@@ -65,7 +65,7 @@ class NewVersion {
 
   /// This checks the version status, then displays a platform-specific alert
   /// with buttons to dismiss the update alert, or go to the app store.
-  showAlertIfNecessary({
+  Future<bool> showAlertIfNecessary({
     String title,
     String content,
     String dismiss,
@@ -76,8 +76,18 @@ class NewVersion {
     VersionStatus versionStatus = await getVersionStatus();
     if (versionStatus != null && versionStatus.canUpdate) {
       showUpdateDialog(
-        versionStatus
+        versionStatus,
+        title: title,
+        content: content,
+        dismiss: dismiss,
+        update: update,
+        onDismiss: onDismiss,
+        onUpdate: onUpdate
       );
+
+      return true;
+    } else {
+      return false;
     }
   }
 
