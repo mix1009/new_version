@@ -114,6 +114,7 @@ class NewVersion {
     );
     versionStatus.storeVersion = versionElement.querySelector('.htlgb').text;
     versionStatus.appStoreLink = url;
+    return versionStatus;
   }
 
   /// Shows the user a platform-specific alert about the app update. The user
