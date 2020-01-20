@@ -194,7 +194,7 @@ class NewVersion {
 
     showDialog(
       context: context,
-      barrierDismissible: dismissible,
+      barrierDismissible: false,
       builder: (BuildContext context) => platform == TargetPlatform.android ? AlertDialog(
         title: titleText,
         content: contentText,
