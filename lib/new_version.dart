@@ -1,12 +1,11 @@
 library new_version;
 
-import 'dart:math';
 
 import 'package:http/http.dart' as http;
+import 'package:launch_review/launch_review.dart';
 import 'package:package_info/package_info.dart';
 import 'package:html/parser.dart' show parse;
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'dart:async';
@@ -20,31 +19,37 @@ class VersionStatus {
   /// The most recent version of the app in the store.
   final String storeVersion;
 
-  /// A link to the app store page where the app can be updated.
-  final String appStoreLink;
-
   final TargetPlatform platform;
 
   VersionStatus({
     @required this.localVersion,
     this.storeVersion,
-    this.appStoreLink,
     this.platform,
   });
 
   bool get canUpdate {
     List<int> local = (localVersion ?? '0.0.0').split('.').map((version) => int.parse(version)).toList();
-    List<int> store = (storeVersion ?? '0.0.0').split('.').map((version) => int.parse(version)).toList();
+    List<int> store = (storeVersion ?? localVersion ?? '0.0.0').split('.').map((version) => int.parse(version)).toList();
 
-    int length = min(local.length, store.length);
-
-    for (int i = 0; i < length; i++) {
-      if (store[i] > local[i]) {
-        return true;
+    if (local.length == store.length) {
+      for (int i = 0; i < store.length; i++) {
+        if (store[i] > local[i]) {
+          if (i > 0) { // if minor version of store is higher than minor version of local.
+            for (int j = 0; j < i; j++) {
+              if (store[j] < local[j]) {
+                return false;
+              }
+            }
+          } else { // if major version of store is higher than major version of local.
+            return true;
+          }
+        }
       }
-    }
 
-    return false;
+      return true;
+    } else {
+      return store.length > local.length;
+    }
   }
 }
 
@@ -62,11 +67,14 @@ class NewVersion {
   /// a different package name in the App Store for some reason.
   final String iOSId;
 
+  /// This is used to check whether current device is android, iOS, or etc.
+  final TargetPlatform _platform;
+
   NewVersion({
     @required this.context,
     this.androidId,
     this.iOSId,
-  }) : assert(context != null);
+  }) : assert(context != null), _platform = Theme.of(context).platform;
 
   /// This checks the version status, then displays a platform-specific alert
   /// with buttons to dismiss the update alert, or go to the app store.
@@ -80,7 +88,7 @@ class NewVersion {
     void Function() onSubmit,
   }) async {
     VersionStatus versionStatus = await getVersionStatus();
-    if (versionStatus != null && versionStatus.canUpdate) {
+    if (versionStatus.canUpdate) {
       showUpdateDialog(
         versionStatus,
         dismissible: dismissible,
@@ -107,62 +115,56 @@ class NewVersion {
       localVersion: packageInfo.version,
     );
 
-    switch (Theme.of(context).platform) {
-      case TargetPlatform.android:
-        final id = androidId ?? packageInfo.packageName;
-        return _getAndroidStoreVersion(id, versionStatus);
-        break;
-      case TargetPlatform.iOS:
-        final id = iOSId ?? packageInfo.packageName;
-        return _getIOSStoreVersion(id, versionStatus);
-        break;
-      default:
-        print('This target platform is not yet supported by this package.');
-        return versionStatus;
+    if (TargetPlatform.android == _platform) {
+      versionStatus = await _getAndroidStoreVersion(androidId ?? packageInfo.packageName, versionStatus);
+    } else if (TargetPlatform.iOS == _platform) {
+      versionStatus = await _getIOSStoreVersion(iOSId ?? packageInfo.packageName, versionStatus);
+    } else {
+      _printNotSupportedMessage();
     }
+
+    return versionStatus;
   }
 
   /// iOS info is fetched by using the iTunes lookup API, which returns a JSON document.
   Future<VersionStatus> _getIOSStoreVersion(String id, VersionStatus versionStatus) async {
-    final url = 'http://itunes.apple.com/lookup?bundleId=$id&country=kr';
-    final response = await http.get(url);
-    if (response.statusCode != 200) {
-      print('Can\'t find an app in the App Store with the id: $id');
-      return null;
-    }
-    final jsonObj = json.decode(response.body);
+    final response = await http.get('http://itunes.apple.com/lookup?bundleId=$id&country=kr');
 
-    return VersionStatus(
-      localVersion: versionStatus.localVersion,
-      storeVersion: jsonObj['results'][0]['version'],
-      appStoreLink: jsonObj['results'][0]['trackViewUrl'],
-      platform: TargetPlatform.iOS
-    );
+    if (response.statusCode == 200) {
+      final jsonObj = json.decode(response.body);
+
+      return VersionStatus(
+        localVersion: versionStatus.localVersion,
+        storeVersion: jsonObj['results'][0]['version'],
+        platform: TargetPlatform.iOS
+      );
+    } else {
+      print('Can\'t find an app in the App Store with the id: $id');
+      return versionStatus;
+    }
   }
 
   /// Android info is fetched by parsing the html of the app store page.
   Future<VersionStatus> _getAndroidStoreVersion(String id, VersionStatus versionStatus) async {
-    final url = 'https://play.google.com/store/apps/details?id=$id';
-    final response = await http.get(url);
-    if (response.statusCode != 200) {
-      print('Can\'t find an app in the Play Store with the id: $id');
-      return null;
-    }
-    final document = parse(response.body);
-    final elements = document.getElementsByClassName('hAyfc');
-    final versionElement = elements.firstWhere(
-      (elm) {
-        String text = elm.querySelector('.BgcNfc').text;
-        return text == 'Current Version' || text == '현재 버전';
-      },
-    );
+    final response = await http.get('https://play.google.com/store/apps/details?id=$id');
 
-    return VersionStatus(
-      localVersion: versionStatus.localVersion,
-      storeVersion: versionElement.querySelector('.htlgb').text,
-      appStoreLink: url,
-      platform: TargetPlatform.android
-    );
+    if (response.statusCode == 200) {
+      final versionElement = parse(response.body).getElementsByClassName('hAyfc').firstWhere(
+        (elm) {
+          String text = elm.querySelector('.BgcNfc').text;
+          return text == 'Current Version' || text == '현재 버전';
+        },
+      );
+
+      return VersionStatus(
+        localVersion: versionStatus.localVersion,
+        storeVersion: versionElement.querySelector('.htlgb').text,
+        platform: TargetPlatform.android
+      );
+    } else {
+      print('Can\'t find an app in the Play Store with the id: $id');
+      return versionStatus;
+    }
   }
 
   /// Shows the user a platform-specific alert about the app update. The user can dismiss the alert or proceed to the app store.
@@ -186,16 +188,14 @@ class NewVersion {
 
     final dismissAction = onDismiss ?? () => Navigator.of(context, rootNavigator: true).pop();
     final submitAction = onSubmit ?? () {
-      _launchAppStore(versionStatus.appStoreLink);
+      _launchAppStore();
       Navigator.of(context, rootNavigator: true).pop();
     };
-
-    final platform = Theme.of(context).platform;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) => platform == TargetPlatform.android ? AlertDialog(
+      builder: (BuildContext context) => _platform == TargetPlatform.android ? AlertDialog(
         title: titleText,
         content: contentText,
         actions: <Widget>[
@@ -226,11 +226,15 @@ class NewVersion {
   }
 
   /// Launches the Apple App Store or Google Play Store page for the app.
-  void _launchAppStore(String appStoreLink) async {
-    if (await canLaunch(appStoreLink)) {
-      await launch(appStoreLink, forceWebView: true);
+  void _launchAppStore() async {
+    if (TargetPlatform.android == _platform || TargetPlatform.iOS == _platform) {
+      await LaunchReview.launch(writeReview: false);
     } else {
-      throw 'Could not launch appStoreLink';
+      _printNotSupportedMessage();
     }
+  }
+
+  void _printNotSupportedMessage() {
+    print('This target platform is not yet supported by this package.');
   }
 }
