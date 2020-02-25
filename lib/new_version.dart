@@ -51,6 +51,15 @@ class VersionStatus {
       return store.length > local.length;
     }
   }
+
+  /// Launches the Apple App Store or Google Play Store page for the app.
+  void launchAppStore() async {
+    if (TargetPlatform.android == platform || TargetPlatform.iOS == platform) {
+      await LaunchReview.launch(writeReview: false);
+    } else {
+      _printNotSupportedMessage();
+    }
+  }
 }
 
 class NewVersion {
@@ -188,7 +197,7 @@ class NewVersion {
 
     final dismissAction = onDismiss ?? () => Navigator.of(context, rootNavigator: true).pop();
     final submitAction = onSubmit ?? () {
-      _launchAppStore();
+      versionStatus.launchAppStore();
       Navigator.of(context, rootNavigator: true).pop();
     };
 
@@ -224,17 +233,8 @@ class NewVersion {
       )
     );
   }
+}
 
-  /// Launches the Apple App Store or Google Play Store page for the app.
-  void _launchAppStore() async {
-    if (TargetPlatform.android == _platform || TargetPlatform.iOS == _platform) {
-      await LaunchReview.launch(writeReview: false);
-    } else {
-      _printNotSupportedMessage();
-    }
-  }
-
-  void _printNotSupportedMessage() {
-    print('This target platform is not yet supported by this package.');
-  }
+void _printNotSupportedMessage() {
+  print('This target platform is not yet supported by this package.');
 }
