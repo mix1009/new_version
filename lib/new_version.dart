@@ -1,6 +1,7 @@
 library new_version;
 
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:launch_review/launch_review.dart';
 import 'package:package_info/package_info.dart';
@@ -46,7 +47,7 @@ class VersionStatus {
         }
       }
 
-      return true;
+      return !listEquals(store, local);
     } else {
       return store.length > local.length;
     }
