@@ -50,8 +50,6 @@ pubspec.lock
 **/ios/Runner/GeneratedPluginRegistrant.*
 **/ios/Runner/GeneratedPluginRegistrant.*
 **/ios/Podfile.lock
-**/ios/**/*.podspec
-**/ios/**/*.podspec.*
 
 # Exceptions to above rules.
 !**/ios/**/default.mode1v3
