@@ -35,19 +35,13 @@ class VersionStatus {
     if (local.length == store.length) {
       for (int i = 0; i < store.length; i++) {
         if (store[i] > local[i]) {
-          if (i > 0) { // if minor version of store is higher than minor version of local.
-            for (int j = 0; j < i; j++) {
-              if (store[j] < local[j]) {
-                return false;
-              }
-            }
-          } else { // if major version of store is higher than major version of local.
-            return true;
-          }
+          return true;
+        } else if (store[i] < local[i]) {
+          return false;
         }
       }
 
-      return !listEquals(store, local);
+      return false;
     } else {
       return store.length > local.length;
     }
